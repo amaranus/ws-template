@@ -1,4 +1,4 @@
-import express from 'express';
+import express from 'express'
 import configureRoutes from './routers';
 import configureSockets from './sockets';
 

@@ -4,7 +4,10 @@
     const HEARTBEAT_VALUE = 1;
     const messages = <HTMLElement>document.getElementById('messages');
     const wsOpen = <HTMLButtonElement>document.getElementById('ws-open');
+    const wsTkOpen = <HTMLButtonElement>document.getElementById('ws-tk-open');
     const wsClose = <HTMLButtonElement>document.getElementById('ws-close');
+    const login = <HTMLButtonElement>document.getElementById('login');
+    const logout = <HTMLButtonElement>document.getElementById('logout');
     const wsSend = <HTMLButtonElement>document.getElementById('ws-send');
     const wsInput = <HTMLInputElement>document.getElementById('ws-input');
 
@@ -47,35 +50,40 @@
         return typeof obj === 'object' && Object.prototype.toString.call(obj) === '[object Blob]';
     }
 
-    wsOpen.addEventListener('click', () => {
-        closeConnection();
+    function initConnection(tk?: string) {
+        return () => {
+            closeConnection();
 
-        ws = new WebSocket('ws://localhost:3000') as WebSocketExt;
+            ws = new WebSocket(`ws://localhost:3000${!tk ? '' : `/?at=${tk}`}`) as WebSocketExt;
 
-        ws.addEventListener('error', () => {
-            showMessage('WebSocket error');
-        });
+            ws.addEventListener('error', () => {
+                showMessage('WebSocket error');
+            });
 
-        ws.addEventListener('open', () => {
-            showMessage('WebSocket connection established');
-        });
+            ws.addEventListener('open', () => {
+                showMessage('WebSocket connection established');
+            });
 
-        ws.addEventListener('close', () => {
-            showMessage('WebSocket connection closed');
+            ws.addEventListener('close', () => {
+                showMessage('WebSocket connection closed');
 
-            if (!!ws.pingTimeout) {
-                clearTimeout(ws.pingTimeout);
-            }
-        });
+                if (!!ws.pingTimeout) {
+                    clearTimeout(ws.pingTimeout);
+                }
+            });
 
-        ws.addEventListener('message', (msg: MessageEvent<string>) => {
-            if (isBinary(msg.data)) {
-                heartbeat();
-            } else {
-                showMessage(`Received message: ${msg.data}`);
-            }
-        });
-    });
+            ws.addEventListener('message', (msg: MessageEvent<string>) => {
+                if (isBinary(msg.data)) {
+                    heartbeat();
+                } else {
+                    showMessage(`Received message: ${msg.data}`);
+                }
+            });
+        };
+    }
+
+    wsOpen.addEventListener('click', initConnection());
+    wsTkOpen.addEventListener('click', initConnection('test'));
 
     wsClose.addEventListener('click', closeConnection);
 
@@ -84,7 +92,7 @@
 
         if (!val) {
             return;
-        } else if (!ws) {
+        } else if (!ws || ws.readyState !== WebSocket.OPEN) {
             showMessage('No WebSocket connection');
             return;
         }
@@ -92,5 +100,27 @@
         ws.send(val);
         showMessage(`Sent "${val}"`);
         wsInput.value = '';
+    });
+
+    login.addEventListener('click', async () => {
+        const res = await fetch('/api/v1/users/login');
+
+        if (res.ok) {
+            showMessage('Logged in');
+        } else {
+            showMessage('Log in error');
+        }
+    });
+
+    logout.addEventListener('click', async () => {
+        closeConnection();
+
+        const res = await fetch('/api/v1/users/logout');
+
+        if (res.ok) {
+            showMessage('Logged out');
+        } else {
+            showMessage('Log out error');
+        }
     });
 })();

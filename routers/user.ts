@@ -1,22 +1,22 @@
 import { Router } from 'express';
+import { AT_KEY } from '../utils';
 
 export default function users() {
     const router = Router();
 
     router
-        .get('/', (req, res, next) => {
-            res.json({
-                id: 1,
-                firstname: 'Matt',
-                lastname: 'Morgan',
-            });
+        .get('/login', (req, res, next) => {
+            const tk = 'test'
+            res.cookie(AT_KEY, tk, {
+                httpOnly: true,
+                signed: true,
+            })
+            res.status(200).send(tk)
         })
-        .post(['/', '/:id'], (req, res, next) => {
-            const params = req.params;
-            const id = params.id;
-            const queryParams = req.query;
-
-        });
+        .get('/logout', (req, res, next) => {
+            res.clearCookie(AT_KEY)
+            res.status(200).send()
+        })
 
     return router;
 }

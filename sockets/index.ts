@@ -1,5 +1,8 @@
+import cookieParser from 'cookie-parser';
 import { Server } from 'http';
+import { Request, Response } from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
+import { AT_KEY, COOKIE_SECRET, validToken } from '../utils';
 
 const HEARTBEAT_INTERVAL = 1000 * 5; // 5 seconds
 const HEARTBEAT_VALUE = 1;
@@ -23,15 +26,25 @@ export default function configure(s: Server) {
         socket.on('error', onSocketPreError);
 
         // perform auth
-        if (!!req.headers['BadAuth']) {
-            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-            socket.destroy();
-            return;
-        }
+        cookieParser(COOKIE_SECRET)(req as Request, {} as Response, () => {
+            const signedCookies = (req as Request).signedCookies;
+            let at = signedCookies[AT_KEY];
 
-        wss.handleUpgrade(req, socket, head, (ws) => {
-            socket.removeListener('error', onSocketPreError);
-            wss.emit('connection', ws, req);
+            if (!at && !!req.url) {
+                const url = new URL(req.url, `ws://${req.headers.host}`);
+                at = url.searchParams.get('at');
+            }
+
+            if (!validToken(at)) {
+                socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+                socket.destroy();
+                return;
+            }
+
+            wss.handleUpgrade(req, socket, head, (ws) => {
+                socket.removeListener('error', onSocketPreError);
+                wss.emit('connection', ws, req);
+            });
         });
     });
 
