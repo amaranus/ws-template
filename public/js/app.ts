@@ -5,11 +5,13 @@
     const messages = <HTMLElement>document.getElementById('messages');
     const wsOpen = <HTMLButtonElement>document.getElementById('ws-open');
     const wsTkOpen = <HTMLButtonElement>document.getElementById('ws-tk-open');
+    const wsThreadOpen = <HTMLButtonElement>document.getElementById('ws-thread-open');
     const wsClose = <HTMLButtonElement>document.getElementById('ws-close');
     const login = <HTMLButtonElement>document.getElementById('login');
     const logout = <HTMLButtonElement>document.getElementById('logout');
     const wsSend = <HTMLButtonElement>document.getElementById('ws-send');
     const wsInput = <HTMLInputElement>document.getElementById('ws-input');
+    const wsThreadInput = <HTMLInputElement>document.getElementById('ws-thread-input');
 
     function showMessage(message: string) {
         if (!messages) {
@@ -50,22 +52,22 @@
         return typeof obj === 'object' && Object.prototype.toString.call(obj) === '[object Blob]';
     }
 
-    function initConnection(tk?: string) {
+    function initConnection(tk?: string, threadid?: string) {
         return () => {
             closeConnection();
 
-            ws = new WebSocket(`ws://localhost:3000${!tk ? '' : `/?at=${tk}`}`) as WebSocketExt;
+            ws = new WebSocket(`ws://localhost:3000${!threadid ? '': `/thread/${threadid}`}${!tk ? '' : `/?at=${tk}`}`) as WebSocketExt;
 
             ws.addEventListener('error', () => {
                 showMessage('WebSocket error');
             });
 
             ws.addEventListener('open', () => {
-                showMessage('WebSocket connection established');
+                showMessage(`WebSocket connection established${!threadid ? '' : ` for thread id ${threadid}`}`);
             });
 
             ws.addEventListener('close', () => {
-                showMessage('WebSocket connection closed');
+                showMessage(`WebSocket connection closed${!threadid ? '' : ` for thread id ${threadid}`}`);
 
                 if (!!ws.pingTimeout) {
                     clearTimeout(ws.pingTimeout);
@@ -84,6 +86,18 @@
 
     wsOpen.addEventListener('click', initConnection());
     wsTkOpen.addEventListener('click', initConnection('test'));
+    wsThreadOpen.addEventListener('click', () => {
+        const threadid = wsThreadInput.value;
+
+        if (!threadid) {
+            showMessage('Please provide a thread ID');
+            return;
+        }
+
+        initConnection('test', threadid)();
+
+        wsThreadInput.value = '';
+    });
 
     wsClose.addEventListener('click', closeConnection);
 
